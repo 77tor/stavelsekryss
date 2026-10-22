@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stavelser</title>
+    <link rel="icon" type="image/png" href="ikon/stavelsekryss.png">
+    <link rel="apple-touch-icon" href="ikon/stavelsekryss.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+@font-face { font-family: 'Stavskrift'; src: url('skrift/stavskrift.otf') format('opentype'); font-weight: normal; font-style: normal; }
+@font-face { font-family: 'Trykkskrift'; src: url('skrift/trykkskrift.otf') format('opentype'); font-weight: normal; font-style: normal; }
+        @import url('https://fonts.googleapis.com/css2?family=Andika&display=swap');
+
+        :root {
+            --sidebar-bg: #243447;
+            --accent-green: #27ae60;
+            --sidebar-text: #ffffff;
+            --main-bg: #d1d8e0;
+            --accent-purple: #9b59b6;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; display: flex; height: 100vh; 
+            background-color: var(--main-bg);
+            overflow: hidden; 
+        }
+
+        .sidebar {
+            width: 350px; min-width: 350px; 
+            background-color: var(--sidebar-bg); color: var(--sidebar-text);
+            padding: 15px 15px 2px 15px; box-sizing: border-box; 
+            display: flex; flex-direction: column;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.3); z-index: 10; 
+            overflow-y: auto;
+        }
+
+        .sidebar h2 { text-align: center; text-transform: uppercase; font-size: 1.1rem; margin-top: 0; }
+
+        textarea { 
+            width: 100%; height: 100px; padding: 10px; border-radius: 6px; border: none; 
+            margin-bottom: 15px; background-color: #ecf0f1; resize: none; box-sizing: border-box;
+        }
+
+        .control-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 8px; 
+            margin-bottom: 6px; font-size: 0.9rem;
+        }
+
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { 
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
+            background-color: #ccc; transition: .4s; border-radius: 20px; 
+        }
+        .slider:before { 
+            position: absolute; content: ""; height: 14px; width: 14px; 
+            left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; 
+        }
+        input:checked + .slider { background-color: var(--accent-green); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        select, input[type="number"] {
+            background: #ecf0f1; border: none; border-radius: 4px; padding: 4px; width: 100px;
+        }
+
+        .action-btn { 
+            width: 100%; 
+            padding: 10px; 
+            border-radius: 8px; 
+            border: none; 
+            font-weight: 600; 
+            cursor: pointer; 
+            margin-bottom: 0; 
+            color: white; 
+            transition: 0.2s;
+            box-sizing: border-box; 
+            font-size: 0.85rem;
+            display: flex;         
+            align-items: center;   
+            justify-content: center; 
+        }
+
+        .action-btn:hover { filter: brightness(1.2); transform: translateY(-2px); }
+
+        .main-content { 
+            flex-grow: 1; overflow-y: auto; display: flex; 
+            flex-direction: column; align-items: center; padding: 40px 20px; 
+        }
+
+        #capture-area {
+            background: white;
+            padding: 1.5cm;         
+            width: 210mm;
+            min-height: 290mm;      
+            margin: 20px auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: none;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;       
+        }
+
+        #output-container {
+            background: white;
+            display: inline-block; 
+            min-width: 100%;
+        }
+
+        /* STAVE-KRYSS OPPSETT FOR SPALTER */
+        .stavekryss-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            margin-top: 40px;
+            box-sizing: border-box;
+        }
+
+        .stavekryss-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px; /* God plass vertikalt for linjetrekking */
+        }
+
+        .stavekryss-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .stavekryss-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #000;
+            border-radius: 50%;
+            margin: 0 12px;
+        }
+
+        /* HAMBURGER MENY STILER */
+        .menu-container { position: relative; margin-bottom: 0; }
+        .hamburger { display: flex; flex-direction: column; gap: 4px; cursor: pointer; width: 20px; padding: 5px; }
+        .hamburger span { display: block; width: 100%; height: 2px; background-color: white; border-radius: 1px; transition: 0.3s; }
+        
+        .dropdown-menu {
+            display: none; position: absolute; top: 30px; left: 0;
+            background-color: #2c3e50; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px; width: 200px; z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+        }
+        .dropdown-menu.show { display: block; }
+        .dropdown-menu a { display: block; color: white; padding: 12px 15px; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .dropdown-menu a:hover { background-color: #34495e; }
+        
+        .menu-icon { width: 20px; height: 20px; margin-right: 10px; vertical-align: middle; object-fit: contain; border-radius: 3px; }
+        .menu-item-disabled { opacity: 0.4; filter: grayscale(100%); pointer-events: none; cursor: default; }
+
+        #watermark {
+            position: absolute; top: 50%; left: 55%; transform: translate(-50%, -50%);
+            width: 300px; opacity: 0.15; filter: grayscale(100%); pointer-events: none; z-index: 0;
+        }
+
+/* Låser størrelsen på titler i Stave-kryss oppgaven */
+#capture-area h1 {
+    font-size: 28pt !important;
+    margin-bottom: 5px;
+}
+
+#capture-area p {
+    font-size: 11pt !important;
+    font-weight: normal !important; /* Sikrer at instruksjonen alltid er tynn og fin */
+    margin-bottom: 40px;
+}
+
+
+/* PRINT */
+@media print {
+    @page { margin: 0; size: A4; }
+    body { 
+        background: white; 
+        overflow: visible !important; 
+        margin: 0; 
+        padding: 0; 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;         
+    }
+    .sidebar { display: none !important; }
+    .main-content { padding: 0 !important; margin: 0 !important; overflow: visible !important; display: block !important; }
+    
+    /* Beholder arket i full bredde */
+    #capture-area { 
+        box-shadow: none !important; 
+        margin: 0 !important; 
+        width: 210mm !important; 
+        min-height: 296mm !important; 
+        padding: 2cm !important; 
+        border: none !important; 
+        page-break-after: avoid; 
+        box-sizing: border-box !important;
+    }
+    ::-webkit-scrollbar { display: none; }
+    
+    /* --- HER ER FIXEN: Vi fjerner center/gap og tvinger nettleseren til å bruke SKJERM-oppsettet ditt --- */
+    .stavekryss-container {
+        display: flex !important;
+        width: 100% !important;
+        position: relative !important;
+        /* Vi fjerner justify-content og gap, slik at den bruker det du har definert for skjerm */
+    }
+
+    .stavekryss-column {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .stavekryss-item {
+        display: flex !important;
+        align-items: center !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Sikrer at SVG-en ligger som et perfekt teppe over containeren */
+    #fasit-lines { 
+        display: block !important; 
+        opacity: 1 !important; 
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+}
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header" style="display: flex; align-items: center; margin-bottom: 20px;">
+        <div class="menu-container" style="margin-bottom: 0; margin-right: 15px;">
+            <div class="hamburger" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div id="myDropdown" class="dropdown-menu">
+                </a>
+                <a href="https://77tor.github.io/bingo/" target="_self">
+                    <img src="ikon/bingo.png" class="menu-icon" alt="Bingo"> Bingo
+                </a>
+                <a href="https://77tor.github.io/finn_ordet/" target="_self">
+                    <img src="ikon/finn_ordet.svg" class="menu-icon" alt="Finn ordet"> Finn ordet
+                </a>
+                <a href="https://77tor.github.io/gitter/" target="_self">
+                    <img src="ikon/gitter.png" class="menu-icon" alt="Gitter-ord"> Gitter-ord
+                </a>
+                <a href="https://77tor.github.io/les_og_skriv/" target="_self">
+                    <img src="ikon/les_skriv.png" class="menu-icon" alt="Les og skriv"> Les og skriv
+                </a>
+                <a href="https://77tor.github.io/ordkjeder/" target="_self">
+                    <img src="ikon/ordkjeder.png" class="menu-icon" alt="Ordkjeder"> Ordkjeder
+                </a>
+                <a href="https://77tor.github.io/ord-sok/" target="_self"> 
+                    <img src="ikon/ord-sok.png" class="menu-icon" alt="Ordsøk"> Ordsøk
+                </a>
+                <a href="https://77tor.github.io/puslehistorier/" target="_self">
+                    <img src="ikon/pusle.png" class="menu-icon" alt="Puslehistorier"> Puslehistorier
+                </a>
+                <a href="https://77tor.github.io/Silhuettord/" target="_self">
+                    <img src="ikon/silhuett-ord.png" class="menu-icon" alt="Silhuett-ord"> Silhuett-ord
+                </a>
+                <a href="https://77tor.github.io/Stavelser/" target="_self">
+                    <img src="ikon/stavelser.png" class="menu-icon" alt="Stavelser"> Stavelser
+                </a>
+                <a href="https://77tor.github.io/synonymer/" target="_self">
+                    <img src="ikon/synonym.png" class="menu-icon" alt="Synonymer"> Synonymer
+                </a>
+            </div>
+        </div>
+        <h2 style="margin: 0; flex-grow: 1; text-align: center; letter-spacing: 1px;">Stavelse-kryss</h2>
+    </div>
+
+    <textarea id="text-input" placeholder="Skriv egne ord her (valgfritt)...
+
+Tips: Bruk bindestrek for å låse delingen manuelt (f.eks. re-ve-enker)."></textarea>
+
+    <div class="sidebar-controls">
+        <div class="control-item">
+            <span>Font</span>
+            <select id="font-family" onchange="generateStaveKryss()">
+                <option value="'Trykkskrift', sans-serif">Trykkskrift</option>
+                <option value="'Stavskrift', cursive">Stavskrift</option>
+                <option value="'Andika', sans-serif">Andika</option>
+                <option value="'Courier New', Courier, monospace">Monospace</option>
+                <option value="'Comic Sans MS', cursive">Comic Sans</option>
+                <option value="Arial, sans-serif">Arial</option>
+            </select>
+        </div>
+        <div class="control-item">
+    <span>Skriftstørrelse</span>
+    <select id="font-size" onchange="generateStaveKryss()">
+        <option value="16">16 px</option>
+        <option value="20">20 px</option>
+        <option value="24" selected>24 px</option>
+        <option value="28">28 px</option>
+        <option value="32">32 px</option>
+        <option value="36">36 px</option>
+        <option value="40">40 px</option>
+        <option value="44">44 px</option>
+        <option value="48">48 px</option>
+    </select>
+</div>
+        <div class="control-item">
+            <span>Antall stavelser</span>
+            <select id="select-stavelser" onchange="gjeldendeOrdListe = []; generateStaveKryss(true)">
+                <option value="2" selected>2 stavelser</option>
+                <option value="3">3 stavelser</option>
+                <option value="4">4 stavelser</option>
+            </select>
+        </div>
+
+        <div class="control-item">
+            <span>Antall ord</span>
+            <select id="select-antall" onchange="gjeldendeOrdListe = []; generateStaveKryss(true)">
+        <option value="1">1 ord</option>
+        <option value="2">2 ord</option>
+        <option value="3">3 ord</option>
+        <option value="4">4 ord</option>
+        <option value="5" selected>5 ord</option>
+        <option value="6">6 ord</option>
+        <option value="7">7 ord</option>
+        <option value="8">8 ord</option>
+        <option value="9">9 ord</option>
+        <option value="10">10 ord</option>
+        <option value="11">11 ord</option>
+        <option value="12">12 ord</option>
+
+            </select>
+        </div>
+
+        <div class="control-item">
+            <span>STORE bokstaver</span>
+            <label class="switch">
+                <input type="checkbox" id="toggle-upper" onchange="generateStaveKryss()">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="control-item">
+            <span>Fet skrift</span>
+            <label class="switch">
+                <input type="checkbox" id="toggle-bold" onchange="generateStaveKryss()">
+                <span class="slider"></span>
+            </label>
+        </div>
+<div class="control-item">
+    <span>Vis fasit</span>
+    <label class="switch">
+        <input type="checkbox" id="toggle-fasit" onchange="generateStaveKryss(false)">
+        <span class="slider"></span>
+    </label>
+</div>
+    </div>
+
+ <div style="margin-top: 15px;">
+    <div class="main-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <button class="action-btn" onclick="generateStaveKryss(true)" style="flex: 2; white-space: nowrap; background-color: var(--accent-green);">LAG STAVELSE-KRYSS</button>
+        <button class="action-btn" onclick="resetForm()" style="flex: 1; white-space: nowrap; background-color: #ff7675;">NULLSTILL</button>
+    </div>
+    
+    <div class="btn-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <button class="action-btn" onclick="endreRekkefolge()" style="background-color: var(--accent-purple); flex: 2; white-space: nowrap;">ENDRE REKKEFØLGE</button>
+        <button class="action-btn" onclick="window.print()" style="background-color: #2980b9; flex: 1; white-space: nowrap;">SKRIV UT</button>
+    </div>
+</div>
+</div> 
+
+<div class="main-content">
+    <div id="placeholder-image" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 80vh;">
+        <img src="ikon/stavelsekryss.png" alt="Velkomstbilde" style="max-width: 400px; opacity: 0.15; filter: grayscale(100%);">
+    </div> 
+
+    <div id="capture-area">
+        <img src="ikon/stavelsekryss.png" id="watermark" alt="Vannmerke">
+        <div id="output-container"></div>
+    </div>
+</div>
+
+<script>
+let hasGenerated = false;
+let gjeldendeOrdListe = []; // NY: Husker ordene slik at de ikke byttes ut ved fontendring
+
+    function toggleMenu() {
+        document.getElementById("myDropdown").classList.toggle("show");
+    }
+
+    // Lukk dropdownen hvis man klikker utenfor
+    window.onclick = function(event) {
+        if (!event.target.matches('.hamburger') && !event.target.matches('.hamburger span')) {
+            var dropdowns = document.getElementsByClassName("dropdown-menu");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
+                }
+            }
+        }
+    }
+
+    // Din originale algoritme for stavelsesdeling
+    function splitWordIntoSyllables(word) {
+        const vowels = "aeiouyæøåAEIOUYÆØÅ";
+        
+        if (word.includes('-')) {
+            let parts = word.split('-');
+            let allSyllables = [];
+            parts.forEach((part) => {
+                let subSyllables = splitWordIntoSyllables(part);
+                allSyllables = allSyllables.concat(subSyllables);
+            });
+            return allSyllables;
+        }
+
+        let cleanWord = word.replace(/[.,!?;:]/g, '');
+        let punctuation = word.replace(/[a-zA-ZæøåÆØÅ0-9]/g, '');
+
+        if (cleanWord.length <= 3) return [word];
+        
+        let syllables = [];
+        let start = 0;
+        
+        for (let i = 0; i < cleanWord.length; i++) {
+            if (vowels.includes(cleanWord[i])) {
+                let nextVowelIndex = -1;
+                for (let j = i + 1; j < cleanWord.length; j++) {
+                    if (vowels.includes(cleanWord[j])) {
+                        nextVowelIndex = j;
+                        break;
+                    }
+                }
+
+                if (nextVowelIndex !== -1) {
+                    let numConsonants = nextVowelIndex - i - 1;
+                    let splitPoint = -1;
+
+                    if (numConsonants === 1) {
+                        splitPoint = i + 1;
+                    } else if (numConsonants >= 2) {
+                        let combo = cleanWord.substring(i + 1, i + 3).toLowerCase();
+                        if (combo === "sk" || combo === "kj" || combo === "sj") {
+                            splitPoint = i + 1;
+                        } else {
+                            splitPoint = i + 2;
+                        }
+                    }
+
+                    if (splitPoint !== -1 && splitPoint > start) {
+                        syllables.push(cleanWord.substring(start, splitPoint));
+                        start = splitPoint;
+                        i = splitPoint - 1;
+                    }
+                }
+            }
+        }
+        
+        let lastSyllable = cleanWord.substring(start) + punctuation;
+        if (lastSyllable) syllables.push(lastSyllable);
+        
+        return syllables;
+    }
+
+    // Generator for stave-kryss
+function generateStaveKryss(isManualClick = false) {
+    const input = document.getElementById('text-input').value.trim();
+    const placeholder = document.getElementById('placeholder-image');
+    const area = document.getElementById('capture-area');
+    const outputContainer = document.getElementById('output-container');
+
+    if (isManualClick) {
+        hasGenerated = true;
+    }
+
+    if (!hasGenerated) {
+        if (placeholder) placeholder.style.display = "flex";
+        area.style.display = "none";
+        return;
+    }
+
+    if (placeholder) placeholder.style.display = "none";
+    area.style.display = "block";
+
+    // --- DEL 1: ORDVALG ---
+    if (isManualClick || gjeldendeOrdListe.length === 0) {
+        window.lagredeKolonner = null;
+        const ordBank = {
+    2: [
+        // Suksessordene fra forrige runde
+        "so-fa", "vin-ter", "som-mer", "ves-ke", "kaf-fe", "stjer-ne", "bø-ker",
+        "sko-le", "da-ta", "pan-ne", "lam-pe", "ka-nin", "lo-ve", "krå-ke", "mon-ster", "vin-du", 
+        "jak-ke", "støv-ler", "syk-kel", "trak-tor", "pap-pa", "mam-ma", "kis-te", "bøt-te", 
+        "gaf-fel", "is-krem", "ep-le", "pæ-re", "bal-long", "tros-se", "fles-ke", 
+        "tøm-mer", "sti-ge", "møn-ster", "drå-pe", "sky-er", "må-ne", "blom-ster", "vaf-fel", "frok-ost",
+        "bjør-ne", "lø-ve", "ti-ger", "rot-te", "mu-sa", "øg-le", 
+        "krab-be", "rek-er", "må-ke", "du-e", "svan-e", "bi-e", "flu-e", "pan-da",
+        "al-ge", "mo-se", "bus-ker", "gren-er", "bla-der", "bøl-ger", "tå-ke", "tor-den",
+        "pu-te", "dy-ne", "kjel-ke", "sokk-er", "buk-se", "van-ter", 
+        "kå-pe", "kjo-le", "per-le", "duk-ke", "sup-pe", "gry-te",
+        "le-ke", "spil-le", "syk-le", "hop-pe", "lø-pe", "dan-se", "syn-ge", "skri-ve", "le-se",
+        "spi-se", "drik-ke", "so-ve", "våk-ne", "ba-de", "svøm-me", "fly-ve", "kjø-re", "rei-se",
+        "vis-ke", "farg-er", "kas-te", "fan-ge", "vin-ne", "ta-pe", "smi-le", "grå-te", "rop-e", "hør-e",
+        "gla-de", "tris-te", "snil-le", "fi-ne", "sto-re", "tung-e", "let-te", "var-me",
+        "kal-de", "vå-te", "tørr-e", "ny-e", "gam-le", "ras-ke", "trei-ge", "ster-ke", "svak-e", "myk-e",
+        "har-de", "run-de", "rø-de", "gu-le", "grøn-ne", "hvi-te", "svart-e",
+
+        // NYTT: Høyfrekvente 2-stavelsesord hentet fra din 444-liste!
+        "si-den", "mel-lom", "el-ler", "før-ste", "kom-mer", "og-så", "ba-re", "kron-er", 
+        "det-te", "no-e", "ny-e", "dis-se", "gan-ge", "væ-re", "al-le", "no-en", "et-ter", 
+        "man-ge", "and-re", "o-ver", "si-er", "skul-le", "u-ten", "kun-ne", "vil-le", "un-der", "he-le", 
+        "ig-jen", "ing-en", "sam-men", "måt-te", "al-dri", "sam-me", "gjø-re", "fle-re", "for-di", 
+        "bå-de", "gjen-nom", "li-ke", "an-net", "kom-me", "hvor-dan", "an-nen", "me-ner", "der-for", 
+        "hel-ler", "len-ge", "all-tid", "nes-ten", "nes-te", "e-gen", "si-de", 
+        "beg-ge", "in-ne", "fin-ne", "en-da", "for-an", "må-te", "mind-re", "syn-es", "bes-te", 
+        "kvin-ner", "sat-te", "of-te", "stil-le", "spur-te", "leng-er", "mu-lig", "slik-e", 
+        "vi-ser", "kjen-ner", "sam-tid", "se-ne", "sær-lig", "al-tså", "un-ge",
+        "gjer-ne", "snak-ke", "ten-ke", "pen-ger", "øn-sker", "sik-kert", "vi-te", "fles-te", 
+        "slutt-e", "e-ne", "gjel-der", "la-get", "al-en", "en-nå", "gan-ske", "om-kring", 
+        "van-ske", "gam-mel", "rik-tig", "føl-te", "mø-te", "lør-dag", "vik-tig", "el-lers", 
+        "fort-sat", "sei-er", "fin-nes", "rek-ke", "hø-re", "sta-dig", "bur-de", 
+        "syn-tes", "set-te", "fun-net", "lø-pet", "me-ter", "men-te", "søn-dag", "føl-ge", 
+        "ven-tet", "rei-ste", "trod-de", "leg-ger", "vis-te", "hol-der", "ten-ker", "til-leg", 
+        "bru-ke", "eg-ne", "e-get", "be-tyr", "en-kel", "nær-me", "dår-lig", 
+        "tren-ger", "vi-se", "op-pe", "fin-ner", "leg-ge", "he-ter"
+    ],
+    3: [
+        "ba-na-ner", "par-a-ply", "ma-ski-ner", "te-le-fon", "ty-tte-bær", "a-ke-brett", "ko-kos-nøtt", 
+        "post-kas-se", "blink-e-lys", "fot-ball-sko", "som-mer-sol", "ap-pel-sin", "da-ta-spill", 
+        "tann-børs-te", "til-hen-ger", "re-ve-mor", "ski-bril-ler", 
+        "ko-mo-de", "troll-mann-en", "ga-te-lys", "sko-le-sekk",
+        "lom-me-kniv", "sko-le-gutt", "pa-pir-fly",  "mora-ler", "bi-bli-o-tek",
+        "red-nings-vest", "is-pin-ner", "par-a-soll", "søs-ken-barn", "kas-sa-lapp", "burs-dags-barn", 
+         "sko-le-gutt",
+        
+        // NYTT: 3-stavelsesord fra din liste
+        "mu-li-ge", "ar-bei-det", "po-li-ti", "vir-ke-lig", "frem-de-les", "men-nes-ke"
+    ],
+    4: [
+        "da-ta-ma-skin", "skat-te-kis-te", "po-li-ti-bil", "ve-ran-da-dør", "pan-ne-ka-ke", "ge-ne-ra-tor", "su-per-hef-te", "vin-ter-støv-ler", 
+        "ko-kos-bol-le", "mo-tor-syk-kel", "he-li-kop-ter", "tram-po-li-ne",  "brann-stis-sjon-en", "fot-ball-tre-ner", 
+        "burs-dags-feiring", "kap-tein-sa-bel", "ko-ka-ko-la", "vaff-el-rø-re", "rem-or-sala-te", "vin-ter-fe-ri-e", "som-mer-fe-ri-e", "hoppe-slott-et", 
+        "ko-kos-bol-ler", "stjer-ne-him-mel", "sjo-ko-la-de", "po-li-ti-mann", 
+        "brann-kon-sta-bel", "burs-dags-pre-sent", "a-kva-ri-um", "før-ste-klas-sing", "sko-le-bø-ker",
+        "burs-dags-fei-ring", "vin-ter-jak-ker",
+        "ko-mo-de-skuff"
+    ]
+};
+
+let valgtAntallStavelser = parseInt(document.getElementById('select-stavelser').value);
+        let antallOrd = parseInt(document.getElementById('select-antall').value);
+
+        if (input !== "") {
+            gjeldendeOrdListe = input.split(/[\n,]+/).map(w => w.trim()).filter(w => w.length > 0);
+        } else {
+            let tilgjengeligeOrd = [...ordBank[valgtAntallStavelser]];
+            tilgjengeligeOrd.sort(() => Math.random() - 0.5);
+            gjeldendeOrdListe = tilgjengeligeOrd.slice(0, Math.min(antallOrd, tilgjengeligeOrd.length));
+        }
+    }
+
+    // --- DEL 2: VISNING ---
+    let aktuelleStavelser = parseInt(document.getElementById('select-stavelser').value);
+    if (input !== "" && gjeldendeOrdListe.length > 0) {
+        aktuelleStavelser = splitWordIntoSyllables(gjeldendeOrdListe[0]).length;
+    }
+
+    let kolonner = Array.from({ length: aktuelleStavelser }, () => []);
+
+    gjeldendeOrdListe.forEach((ord, ordIndex) => {
+        const stavelser = splitWordIntoSyllables(ord);
+        for (let i = 0; i < aktuelleStavelser; i++) {
+            let stavelsestekst = stavelser[i] || "";
+            kolonner[i].push({ id: ordIndex, tekst: stavelsestekst });
+        }
+    });
+
+    if (isManualClick) {
+        for (let i = 1; i < aktuelleStavelser; i++) {
+            kolonner[i].sort(() => Math.random() - 0.5);
+        }
+        window.lagredeKolonner = kolonner;
+    } else if (window.lagredeKolonner) {
+        kolonner = window.lagredeKolonner;
+    } else {
+        for (let i = 1; i < aktuelleStavelser; i++) {
+            kolonner[i].sort(() => Math.random() - 0.5);
+        }
+        window.lagredeKolonner = kolonner;
+    }
+
+    const fasitFarger = [
+        "#e74c3c", "#3498db", "#2ecc71", "#f1c40f", "#9b59b6", 
+        "#e67e22", "#1abc9c", "#e84393", "#6c5ce7", "#00b894",
+        "#ff7675", "#74b9ff", "#55efc4", "#ffeaa7", "#a29bfe"
+    ];
+
+    const visFasit = document.getElementById('toggle-fasit').checked;
+
+    let html = `
+        <h1 style="text-align: center; margin-top: 0; margin-bottom: 10px; font-family: sans-serif; letter-spacing: 2px;">STAVELSE-KRYSS</h1>
+        <p style="text-align: center; margin-bottom: 50px; font-style: italic; font-size: 0.9em; font-family: sans-serif;">Trekk streker mellom stavelsene fra venstre til høyre for å finne ordene.</p>
+        <div class="stavekryss-container" style="position: relative;">
+    `;
+
+    if (visFasit) {
+        html += `<svg id="fasit-lines" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></svg>`;
+    }
+
+    kolonner.forEach((kolonneData, kolonneIndeks) => {
+        html += `<div class="stavekryss-column">`;
+        kolonneData.forEach((item, radIndeks) => {
+            
+            html += `<div class="stavekryss-item">`;
+
+            // --- ENDRET: FORBEDRET STRUKTUR SOM LÅSER PRIKKER OG TEKST I REKKEFØLGE ---
+            // Punkt til venstre for teksten (inngående)
+            if (kolonneIndeks > 0) {
+                let dotIdVenstre = `dot-in-${item.id}-${kolonneIndeks}`;
+                html += `<span id="${dotIdVenstre}" class="stavekryss-dot"></span>`;
+            }
+            
+            const isUpper = document.getElementById('toggle-upper').checked;
+            let tekstVisning = isUpper ? item.tekst.toUpperCase() : item.tekst;
+            
+            let stilTekst = visFasit ? `color: ${fasitFarger[item.id % fasitFarger.length]}; font-weight: bold;` : '';
+            html += `<span class="stavekryss-text-node" style="min-width: 60px; text-align: center; display: inline-block; ${stilTekst}">${tekstVisning}</span>`;
+
+            // Punkt til høyre for teksten (utgående)
+            if (kolonneIndeks < aktuelleStavelser - 1) {
+                let dotIdHøyre = `dot-out-${item.id}-${kolonneIndeks}`;
+                html += `<span id="${dotIdHøyre}" class="stavekryss-dot"></span>`;
+            }
+
+            html += `</div>`;
+        });
+        html += `</div>`;
+    });
+
+    html += `</div>`;
+    outputContainer.innerHTML = html;
+    
+    const fontFamily = document.getElementById('font-family').value;
+    const fontSize = document.getElementById('font-size').value;
+    const isBold = document.getElementById('toggle-bold').checked;
+    
+    outputContainer.style.fontSize = fontSize + "px";
+    outputContainer.style.fontWeight = isBold ? "bold" : "normal";
+    area.style.fontFamily = fontFamily;
+
+    const watermark = document.getElementById('watermark');
+    if (watermark) watermark.style.display = "none";
+
+    if (visFasit) {
+        setTimeout(() => {
+            tegnFasitLinjer(aktuelleStavelser, kolonner.length, fasitFarger);
+        }, 50);
+    }
+}
+
+function tegnFasitLinjer(antallKolonner, antallRader, farger) {
+    const svg = document.getElementById('fasit-lines');
+    const container = document.querySelector('.stavekryss-container');
+    if (!svg || !container) return;
+
+    const containerRect = container.getBoundingClientRect();
+    let linjeHTML = "";
+
+    gjeldendeOrdListe.forEach((ord, ordId) => {
+        const farge = farger[ordId % farger.length];
+
+        for (let k = 0; k < antallKolonner - 1; k++) {
+            const prikkUt = container.querySelector(`#dot-out-${ordId}-${k}`);
+            const prikkInn = container.querySelector(`#dot-in-${ordId}-${k + 1}`);
+
+            if (prikkUt && prikkInn) {
+                const rectA = prikkUt.getBoundingClientRect();
+                const rectB = prikkInn.getBoundingClientRect();
+
+                // Regner ut posisjon i prosent (%) i stedet for piksler (px)
+                const x1 = ((rectA.left + rectA.width / 2) - containerRect.left) / containerRect.width * 100;
+                const y1 = ((rectA.top + rectA.height / 2) - containerRect.top) / containerRect.height * 100;
+                const x2 = ((rectB.left + rectB.width / 2) - containerRect.left) / containerRect.width * 100;
+                const y2 = ((rectB.top + rectB.height / 2) - containerRect.top) / containerRect.height * 100;
+
+                linjeHTML += `<line x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%" stroke="${farge}" stroke-width="2.5" opacity="0.75" stroke-linecap="round" />`;
+            }
+        }
+    });
+
+    svg.innerHTML = linjeHTML;
+}
+
+
+// Tvinger appen til å tegne fasitstrekene på nytt når siden formateres om til utskrift
+window.onbeforeprint = function() {
+    const visFasit = document.getElementById('toggle-fasit').checked;
+    if (visFasit) {
+        let aktuelleStavelser = parseInt(document.getElementById('select-stavelser').value);
+        const input = document.getElementById('text-input').value.trim();
+        if (input !== "" && gjeldendeOrdListe.length > 0) {
+            aktuelleStavelser = splitWordIntoSyllables(gjeldendeOrdListe[0]).length;
+        }
+        
+        const fasitFarger = [
+            "#e74c3c", "#3498db", "#2ecc71", "#f1c40f", "#9b59b6", 
+            "#e67e22", "#1abc9c", "#e84393", "#6c5ce7", "#00b894",
+            "#ff7675", "#74b9ff", "#55efc4", "#ffeaa7", "#a29bfe"
+        ];
+        
+        // Siden vi bruker %, vil linjene automatisk strekke seg perfekt sammen med prikkene!
+        tegnFasitLinjer(aktuelleStavelser, 0, fasitFarger);
+    }
+};
+
+window.onafterprint = function() {
+    const visFasit = document.getElementById('toggle-fasit').checked;
+    if (visFasit) {
+        // Tegner linjene tilbake til skjermstørrelse igjen
+        window.onbeforeprint();
+    }
+};
+
+
+function endreRekkefolge() {
+    // Sjekk at det faktisk er generert en oppgave først
+    if (!hasGenerated || !window.lagredeKolonner) {
+        alert("Du må lage et stave-kryss først før du kan endre rekkefølgen!");
+        return;
+    }
+
+    // Gå gjennom absolutt alle kolonnene (inkludert den første på venstre side) 
+    // og stokk dem om uavhengig av hverandre
+    window.lagredeKolonner.forEach(kolonne => {
+        kolonne.sort(() => Math.random() - 0.5);
+    });
+
+    // Kjør hovedfunksjonen på nytt uten å sette isManualClick til true.
+    // Siden gjeldendeOrdListe ikke er tom, vil den bruke nøyaktig samme ord,
+    // men den vil plukke opp den splitter nye rekkefølgen fra window.lagredeKolonner!
+    generateStaveKryss(false);
+}
+
+function resetForm() {
+    if(confirm("Tømme og nullstille siden?")) {
+        document.getElementById('text-input').value = "";
+        document.getElementById('toggle-fasit').checked = false; // NY: Slår av fasit-bryteren
+        hasGenerated = false;
+        gjeldendeOrdListe = []; 
+        window.lagredeKolonner = null; 
+        document.getElementById('placeholder-image').style.display = "flex";
+        document.getElementById('capture-area').style.display = "none";
+        
+        const watermark = document.getElementById('watermark');
+        if (watermark) watermark.style.display = "block";
+    }
+}
+</script>
+</body>
+</html>
